@@ -16,10 +16,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'IPFS configuration missing' }, { status: 500 });
         }
 
-        // Sử dụng Pinata API đúng cách
         const pinataUrl = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
         
-        // Tạo FormData mới cho Pinata
         const pinataFormData = new FormData();
         pinataFormData.append('file', file);
 
@@ -39,9 +37,11 @@ export async function POST(request: Request) {
 
         const data = await response.json();
         
-        // Trả về URL với gateway của bạn
+        // Trả về cả URL gateway và ipfs:// format
         return NextResponse.json({ 
-            fileUrl: `https://${GATEWAY}/ipfs/${data.IpfsHash}` 
+            fileUrl: `https://${GATEWAY}/ipfs/${data.IpfsHash}`,
+            ipfsUrl: `ipfs://${data.IpfsHash}`,
+            cid: data.IpfsHash
         });
     } catch (error) {
         console.error('Error uploading to IPFS:', error);

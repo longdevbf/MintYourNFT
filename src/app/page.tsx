@@ -59,9 +59,6 @@ export default function Home() {
       setError("Please complete all fields and select an image");
       return;
     }
-    const network = await wallet.getNetworkId();
-    console.log(network);
-  
 
     setUploading(true);
     setError(null);
@@ -82,30 +79,51 @@ export default function Home() {
         throw new Error(data.error || 'Upload failed');
       }
 
-      const ipfsUrl = data.fileUrl;
-      setIpfsUrl(ipfsUrl);
-      setNftData({ ...nftData, image: ipfsUrl, mediaType: file.type });
+      // Sử dụng ipfs:// format cho NFT metadata
+      const ipfsUrl = data.ipfsUrl; // ipfs://QmQqNA1iuWUcq3jUeq4HwcBVHZdDrjJxyAgEpcYJukrF8y
+      const gatewayUrl = data.fileUrl; // https://gateway/ipfs/QmQqNA1iuWUcq3jUeq4HwcBVHZdDrjJxyAgEpcYJukrF8y
+      
+      setIpfsUrl(gatewayUrl); // Hiển thị gateway URL cho preview
+      setNftData({ ...nftData, image: ipfsUrl, mediaType: file.type }); // Sử dụng ipfs:// cho NFT
 
-      // Step 2: Mint NFT
+      // Step 2: Mint NFT với metadata
       const address = await wallet.getChangeAddress();
       const forgingScript = ForgeScript.withOneSignature(address);
       const utxos = await wallet.getUtxos();
       const policyID = resolveScriptHash(forgingScript);
       const tokenNameHex = stringToHex(nftData.name);
 
+      // Tạo metadata theo chuẩn CIP-25
+      const nftMetadata = {
+        name: nftData.name,
+        image: ipfsUrl,
+        mediaType: file.type,
+        description: nftData.description,
+      };
+      console.log("nftMetadata",nftMetadata)
+      // Tạo metadata object theo format Cardano
+      const metadata = {
+        [policyID]: {
+          [nftData.name]: {
+            ...nftMetadata
+          }
+        }
+      };
+
+      console.log("NFT Metadata:", metadata);
+
       const unsignedTx = await txBuilder
         .mint(supply, policyID, tokenNameHex)
-        .txOut(
-          addr,
-          [
+        .txOut(addr,
+          [ 
             {
               unit: 'lovelace',
-              quantity: '50000000'
+              quantity: '100000000'
             }
           ]
         )
         .mintingScript(forgingScript)
-        
+        .metadataValue("721", metadata) // Thêm metadata vào transaction
         .changeAddress(address)
         .selectUtxosFrom(utxos)
         
